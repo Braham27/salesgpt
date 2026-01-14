@@ -27,8 +27,21 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     logger.info("Starting SalesGPT Backend...")
-    await init_db()
-    await init_vector_store()
+    
+    try:
+        await init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        logger.warning("Continuing without database - some features may be unavailable")
+    
+    try:
+        await init_vector_store()
+        logger.info("Vector store initialized")
+    except Exception as e:
+        logger.error(f"Vector store initialization failed: {e}")
+        logger.warning("Continuing without vector store - semantic search disabled")
+    
     logger.info("SalesGPT Backend started successfully")
     
     yield
