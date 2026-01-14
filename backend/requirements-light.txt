@@ -1,3 +1,4 @@
+# Lightweight requirements for Render free tier
 # Core Framework
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
@@ -9,7 +10,7 @@ pydantic-settings>=2.1.0
 sqlalchemy>=2.0.25
 aiosqlite>=0.19.0
 
-# AI/ML (lightweight for free tier)
+# AI/ML (Core only)
 openai>=1.12.0
 tiktoken>=0.5.2
 

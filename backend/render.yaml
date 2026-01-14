@@ -9,12 +9,12 @@
       "description": "Neon PostgreSQL connection string (use postgresql+asyncpg://...)"
     },
     {
-      "key": "rnd_zPV5c99kbc9raxprkXCLX3Z091AY",
+      "key": "SECRET_KEY",
       "generateValue": "secret"
     },
     {
       "key": "JWT_SECRET_KEY",
-      "generateValue": "secret";
+      "generateValue": "secret"
     },
     {
       "key": "OPENAI_API_KEY",
@@ -22,7 +22,7 @@
     },
     {
       "key": "DEEPGRAM_API_KEY",
-      "description": "Your Deepgram API key"
+      "description": "Your Deepgram API key for real-time transcription"
     }
   ]
 }
