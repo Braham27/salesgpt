@@ -1,0 +1,40 @@
+# Core Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+pydantic>=2.5.3
+pydantic-settings>=2.1.0
+
+# Database
+sqlalchemy>=2.0.25
+aiosqlite>=0.19.0
+asyncpg>=0.29.0
+alembic>=1.13.1
+
+# Vector Database
+chromadb>=0.4.22
+
+# AI/ML
+openai>=1.12.0
+anthropic>=0.18.0
+tiktoken>=0.5.2
+langchain>=0.1.5
+langchain-openai>=0.0.5
+
+# Speech Processing
+deepgram-sdk>=3.1.0
+websockets>=12.0
+
+# Authentication
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.1.2
+
+# Utilities
+python-dotenv>=1.0.0
+httpx>=0.26.0
+aiofiles>=23.2.1
+
+# Date/Time
+python-dateutil>=2.8.2
+pytz>=2024.1

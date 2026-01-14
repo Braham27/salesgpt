@@ -1,0 +1,28 @@
+{
+  "name": "salesgpt-api",
+  "env": "python",
+  "buildCommand": "pip install -r requirements.txt",
+  "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+  "envVars": [
+    {
+      "key": "DATABASE_URL",
+      "description": "Neon PostgreSQL connection string (use postgresql+asyncpg://...)"
+    },
+    {
+      "key": "SECRET_KEY",
+      "generateValue": "secret"
+    },
+    {
+      "key": "JWT_SECRET_KEY",
+      "generateValue": "secret"
+    },
+    {
+      "key": "OPENAI_API_KEY",
+      "description": "Your OpenAI API key"
+    },
+    {
+      "key": "DEEPGRAM_API_KEY",
+      "description": "Your Deepgram API key"
+    }
+  ]
+}
