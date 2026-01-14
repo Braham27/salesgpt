@@ -47,7 +47,7 @@ export default function ProductsPage() {
     },
   });
 
-  const categories = ['all', ...new Set(products.map((p: Product) => p.category))];
+  const categories: string[] = ['all', ...Array.from(new Set(products.map((p: Product) => p.category || '')))];
 
   const filteredProducts = products.filter((product: Product) => {
     const matchesSearch = 
