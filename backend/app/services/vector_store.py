@@ -3,8 +3,14 @@ Vector Store for Product Knowledge Base
 Uses ChromaDB for semantic search
 """
 
-import chromadb
-from chromadb.utils import embedding_functions
+try:
+    import chromadb
+    from chromadb.utils import embedding_functions
+    CHROMADB_AVAILABLE = True
+except ImportError:
+    CHROMADB_AVAILABLE = False
+    chromadb = None
+    
 import logging
 from typing import List, Dict, Any, Optional
 import os
@@ -15,42 +21,52 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Global client instance
-chroma_client: Optional[chromadb.PersistentClient] = None
+chroma_client = None
 product_collection = None
 objection_collection = None
 
 
 async def init_vector_store():
-    """Initialize ChromaDB collections"""
+    """Initialize ChromaDB collections - optional, graceful failure"""
     global chroma_client, product_collection, objection_collection
     
-    persist_dir = os.path.join(settings.upload_dir, "chroma_db")
-    os.makedirs(persist_dir, exist_ok=True)
+    if not CHROMADB_AVAILABLE:
+        logger.warning("ChromaDB not available, vector search disabled")
+        return
     
-    # Use new PersistentClient API
-    chroma_client = chromadb.PersistentClient(path=persist_dir)
+    if not settings.openai_api_key:
+        logger.warning("OpenAI API key not set, vector search disabled")
+        return
     
-    # OpenAI embeddings function
-    openai_ef = embedding_functions.OpenAIEmbeddingFunction(
-        api_key=settings.openai_api_key,
-        model_name="text-embedding-3-small"
-    )
-    
-    # Product knowledge collection
-    product_collection = chroma_client.get_or_create_collection(
-        name="products",
-        embedding_function=openai_ef,
-        metadata={"description": "Product catalog with features, benefits, and FAQs"}
-    )
-    
-    # Objection handling collection
-    objection_collection = chroma_client.get_or_create_collection(
-        name="objections",
-        embedding_function=openai_ef,
-        metadata={"description": "Common objections and proven responses"}
-    )
-    
-    logger.info("Vector store initialized successfully")
+    try:
+        # Use in-memory client for simpler deployment
+        chroma_client = chromadb.Client()
+        
+        # OpenAI embeddings function
+        openai_ef = embedding_functions.OpenAIEmbeddingFunction(
+            api_key=settings.openai_api_key,
+            model_name="text-embedding-3-small"
+        )
+        
+        # Product knowledge collection
+        product_collection = chroma_client.get_or_create_collection(
+            name="products",
+            embedding_function=openai_ef,
+            metadata={"description": "Product catalog with features, benefits, and FAQs"}
+        )
+        
+        # Objection handling collection
+        objection_collection = chroma_client.get_or_create_collection(
+            name="objections",
+            embedding_function=openai_ef,
+            metadata={"description": "Common objections and proven responses"}
+        )
+        
+        logger.info("Vector store initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize vector store: {e}")
+        logger.warning("Vector search will be disabled")
 
 
 class VectorStore:
@@ -68,6 +84,10 @@ class VectorStore:
     ) -> None:
         """Add a product to the vector store"""
         global product_collection
+        
+        if product_collection is None:
+            logger.warning("Vector store not initialized, skipping add_product")
+            return
         
         # Create comprehensive document for embedding
         doc_content = f"""
@@ -112,6 +132,10 @@ class VectorStore:
         """Add an objection handler to the vector store"""
         global objection_collection
         
+        if objection_collection is None:
+            logger.warning("Vector store not initialized, skipping add_objection_handler")
+            return
+        
         doc_content = f"""
         Objection: {objection}
         
@@ -143,6 +167,10 @@ class VectorStore:
         """Search products by semantic similarity"""
         global product_collection
         
+        if product_collection is None:
+            logger.warning("Vector store not initialized, returning empty results")
+            return []
+        
         results = product_collection.query(
             query_texts=[query],
             n_results=n_results,
@@ -168,6 +196,10 @@ class VectorStore:
     ) -> List[Dict[str, Any]]:
         """Search for relevant objection handlers"""
         global objection_collection
+        
+        if objection_collection is None:
+            logger.warning("Vector store not initialized, returning empty results")
+            return []
         
         filter_metadata = {"category": category} if category else None
         
