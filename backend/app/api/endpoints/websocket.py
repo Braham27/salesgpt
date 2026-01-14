@@ -22,6 +22,9 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+# Demo mode flag - enabled when Deepgram API key is not set
+DEMO_MODE = not settings.deepgram_api_key or settings.deepgram_api_key == ""
+
 
 class CallSession:
     """Manages a single call session"""
@@ -48,6 +51,42 @@ class CallSession:
         self.segments: list[TranscriptSegment] = []
         self.suggestions: list[CoachingSuggestion] = []
         self.start_time: Optional[datetime] = None
+        self._demo_task: Optional[asyncio.Task] = None
+    
+    async def _run_demo_mode(self):
+        """Run demo mode with simulated transcription"""
+        demo_script = [
+            {"speaker": "salesperson", "text": "Hi! Thanks for taking my call today. How are you doing?", "delay": 2},
+            {"speaker": "prospect", "text": "I'm doing well, thanks. What is this about?", "delay": 4},
+            {"speaker": "salesperson", "text": "I'm calling from ACME Solutions. I wanted to share how we've helped companies like yours improve their sales productivity by 30%.", "delay": 6},
+            {"speaker": "prospect", "text": "Interesting. We've been struggling with our sales team's efficiency lately.", "delay": 8},
+            {"speaker": "salesperson", "text": "I hear that a lot. What specific challenges are you facing?", "delay": 10},
+            {"speaker": "prospect", "text": "Well, our team spends too much time on administrative tasks instead of selling.", "delay": 13},
+            {"speaker": "salesperson", "text": "That's a common pain point. Our platform automates most of that administrative work.", "delay": 16},
+            {"speaker": "prospect", "text": "That sounds helpful. But I'm concerned about the price.", "delay": 19},
+        ]
+        
+        time_offset = 0.0
+        for item in demo_script:
+            if not self.is_active:
+                break
+            await asyncio.sleep(item["delay"] - time_offset)
+            time_offset = item["delay"]
+            
+            segment = TranscriptSegment(
+                text=item["text"],
+                speaker=Speaker.SALESPERSON if item["speaker"] == "salesperson" else Speaker.PROSPECT,
+                start_time=item["delay"],
+                end_time=item["delay"] + 2,
+                confidence=0.95,
+                is_final=True
+            )
+            
+            await self.on_transcript(segment)
+            
+            # Generate AI suggestion after prospect speaks
+            if item["speaker"] == "prospect":
+                await self.on_suggestion_needed(item["text"], Speaker.PROSPECT)
     
     async def start(
         self,
@@ -70,6 +109,16 @@ class CallSession:
         
         # Send opening suggestion
         await self.send_suggestion(opening_suggestion)
+        
+        # Check if we're in demo mode
+        if DEMO_MODE:
+            logger.info("Starting call in DEMO MODE (Deepgram not configured)")
+            await self.websocket.send_json({
+                "type": "info",
+                "data": {"message": "Running in demo mode - simulated transcription active"}
+            })
+            self._demo_task = asyncio.create_task(self._run_demo_mode())
+            return
         
         # Start transcription
         await self.transcription_service.start_stream(
@@ -212,6 +261,14 @@ class CallSession:
     async def end_call(self) -> Dict[str, Any]:
         """End the call and generate summary"""
         self.is_active = False
+        
+        # Cancel demo task if running
+        if self._demo_task and not self._demo_task.done():
+            self._demo_task.cancel()
+            try:
+                await self._demo_task
+            except asyncio.CancelledError:
+                pass
         
         # Stop transcription
         await self.transcription_service.stop_stream()

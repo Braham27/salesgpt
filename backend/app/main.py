@@ -75,10 +75,24 @@ app.include_router(api_router, prefix="/api")
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
+    demo_mode = not settings.openai_api_key or not settings.deepgram_api_key
     return {
         "status": "healthy",
         "app": settings.app_name,
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "demo_mode": demo_mode,
+        "openai_configured": bool(settings.openai_api_key),
+        "deepgram_configured": bool(settings.deepgram_api_key)
+    }
+
+
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "app": settings.app_name,
+        "status": "running",
+        "docs": "/api/docs"
     }
 
 

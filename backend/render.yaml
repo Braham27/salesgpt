@@ -9,12 +9,12 @@
       "description": "Neon PostgreSQL connection string (use postgresql+asyncpg://...)"
     },
     {
-      "key": "SECRET_KEY",
+      "key": "rnd_zPV5c99kbc9raxprkXCLX3Z091AY",
       "generateValue": "secret"
     },
     {
       "key": "JWT_SECRET_KEY",
-      "generateValue": "secret"
+      "generateValue": "secret";
     },
     {
       "key": "OPENAI_API_KEY",
