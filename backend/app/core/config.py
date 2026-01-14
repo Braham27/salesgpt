@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
     anthropic_api_key: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
     deepgram_api_key: str = Field(default="", env="DEEPGRAM_API_KEY")
+    deepgram_project_id: Optional[str] = Field(default=None, env="DEEPGRAM_PROJECT_ID")
     hf_auth_token: Optional[str] = Field(default=None, env="HF_AUTH_TOKEN")
     
     # JWT Settings
@@ -52,6 +53,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"  # Ignore extra environment variables
 
 
 @lru_cache()
