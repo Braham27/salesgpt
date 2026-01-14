@@ -138,20 +138,23 @@ export const callsApi = {
   },
 };
 
+// Product data type for API
+interface ProductData {
+  name: string;
+  sku?: string;
+  category?: string;
+  description?: string;
+  price?: number;
+  key_features?: string[];
+  benefits?: string[];
+  target_audience?: string;
+  objection_handlers?: Record<string, string>;
+  faqs?: { question: string; answer: string }[];
+}
+
 // Products API
 export const productsApi = {
-  create: async (data: {
-    name: string;
-    sku?: string;
-    category?: string;
-    description?: string;
-    price?: number;
-    key_features?: string[];
-    benefits?: string[];
-    target_audience?: string;
-    objection_handlers?: Record<string, string>;
-    faqs?: { question: string; answer: string }[];
-  }) => {
+  create: async (data: ProductData) => {
     const response = await api.post('/products', data);
     return response.data;
   },
@@ -166,7 +169,7 @@ export const productsApi = {
     return response.data;
   },
 
-  update: async (productId: string, data: Partial<Parameters<typeof productsApi.create>[0]>) => {
+  update: async (productId: string, data: Partial<ProductData>) => {
     const response = await api.patch(`/products/${productId}`, data);
     return response.data;
   },
