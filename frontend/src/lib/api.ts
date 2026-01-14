@@ -194,19 +194,22 @@ export const productsApi = {
   },
 };
 
+// Prospect data type for API
+interface ProspectData {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  job_title?: string;
+  notes?: string;
+  pain_points?: string[];
+  interests?: string[];
+}
+
 // Prospects API
 export const prospectsApi = {
-  create: async (data: {
-    first_name?: string;
-    last_name?: string;
-    email?: string;
-    phone?: string;
-    company?: string;
-    job_title?: string;
-    notes?: string;
-    pain_points?: string[];
-    interests?: string[];
-  }) => {
+  create: async (data: ProspectData) => {
     const response = await api.post('/prospects', data);
     return response.data;
   },
@@ -221,7 +224,7 @@ export const prospectsApi = {
     return response.data;
   },
 
-  update: async (prospectId: string, data: Partial<Parameters<typeof prospectsApi.create>[0]>) => {
+  update: async (prospectId: string, data: Partial<ProspectData>) => {
     const response = await api.patch(`/prospects/${prospectId}`, data);
     return response.data;
   },
