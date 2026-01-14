@@ -31,7 +31,7 @@ export default function ProductsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  const { data: products = [], isLoading } = useQuery({
+  const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ['products'],
     queryFn: async () => {
       const response = await productsApi.list();
@@ -47,7 +47,7 @@ export default function ProductsPage() {
     },
   });
 
-  const categories: string[] = ['all', ...Array.from(new Set(products.map((p: Product) => p.category || '')))];
+  const categories: string[] = ['all', ...Array.from(new Set(products.map((p) => p.category || '')))];
 
   const filteredProducts = products.filter((product: Product) => {
     const matchesSearch = 
