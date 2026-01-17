@@ -376,3 +376,37 @@ async def delete_call(
     await db.commit()
     
     return {"status": "deleted"}
+
+
+# Test endpoint for AI suggestions (no auth required for testing)
+class TestSuggestionRequest(BaseModel):
+    prospect_name: Optional[str] = None
+    prospect_company: Optional[str] = None
+    context: Optional[str] = None
+    objective: Optional[str] = None
+    transcript_text: Optional[str] = None
+
+
+@router.post("/test-suggestion")
+async def test_ai_suggestion(request: TestSuggestionRequest):
+    """Test endpoint to get AI suggestion without starting a call"""
+    from app.services.coaching_engine import AICoachingEngine
+    
+    engine = AICoachingEngine()
+    
+    # Initialize and get opening suggestion
+    suggestion = await engine.initialize_call(
+        prospect_name=request.prospect_name,
+        prospect_company=request.prospect_company,
+        prospect_context=request.context,
+        call_objective=request.objective
+    )
+    
+    return {
+        "suggestion": suggestion.to_dict(),
+        "context": {
+            "prospect_name": request.prospect_name,
+            "prospect_company": request.prospect_company,
+            "objective": request.objective
+        }
+    }

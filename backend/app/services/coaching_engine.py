@@ -291,7 +291,7 @@ Current call context will be provided. Generate helpful, actionable suggestions.
         """
         
         response = await self.client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model="gpt-5.2",
             messages=[
                 {"role": "system", "content": self.SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
@@ -345,7 +345,7 @@ Current call context will be provided. Generate helpful, actionable suggestions.
         """
         
         response = await self.client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model="gpt-5.2",
             messages=[
                 {"role": "system", "content": "You are a sales conversation analyzer. Return only valid JSON."},
                 {"role": "user", "content": prompt}
@@ -507,7 +507,7 @@ Current call context will be provided. Generate helpful, actionable suggestions.
         
         try:
             response = await self.client.chat.completions.create(
-                model="gpt-4-turbo-preview",
+                model="gpt-5.2",
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},
                     {"role": "user", "content": prompt}
@@ -565,7 +565,7 @@ Current call context will be provided. Generate helpful, actionable suggestions.
         """
         
         response = await self.client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model="gpt-5.2",
             messages=[
                 {"role": "system", "content": "You are a sales call analyst. Return only valid JSON."},
                 {"role": "user", "content": prompt}
@@ -617,7 +617,7 @@ Current call context will be provided. Generate helpful, actionable suggestions.
         """
         
         response = await self.client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model="gpt-5.2",
             messages=[
                 {"role": "system", "content": "You are a professional sales email writer."},
                 {"role": "user", "content": prompt}
@@ -658,7 +658,7 @@ class SentimentAnalyzer:
         """
         
         response = await self.client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model="gpt-5.2",
             messages=[
                 {"role": "system", "content": "You are a sentiment analyzer. Return only valid JSON."},
                 {"role": "user", "content": prompt}
