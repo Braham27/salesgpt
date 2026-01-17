@@ -77,7 +77,14 @@ export default function CallInterface({ params }: { params: { id: string } }) {
   
   // Demo mode state
   const [demoMode, setDemoMode] = useState(false);
+  const [currentSpeaker, setCurrentSpeaker] = useState<'salesperson' | 'prospect'>('salesperson');
   const recognitionRef = useRef<any>(null);
+  const currentSpeakerRef = useRef<'salesperson' | 'prospect'>('salesperson');
+  
+  // Keep ref in sync with state for use in callbacks
+  useEffect(() => {
+    currentSpeakerRef.current = currentSpeaker;
+  }, [currentSpeaker]);
   
   const wsRef = useRef<WebSocket | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -210,7 +217,7 @@ export default function CallInterface({ params }: { params: { id: string } }) {
         if (interimTranscript) {
           const interimSegment: TranscriptSegment = {
             text: interimTranscript,
-            speaker: 'salesperson',
+            speaker: currentSpeakerRef.current,
             start_time: Date.now() / 1000,
             end_time: Date.now() / 1000,
             confidence: 0.5,
@@ -228,7 +235,7 @@ export default function CallInterface({ params }: { params: { id: string } }) {
         if (finalTranscript) {
           const finalSegment: TranscriptSegment = {
             text: finalTranscript,
-            speaker: 'salesperson',
+            speaker: currentSpeakerRef.current,
             start_time: Date.now() / 1000,
             end_time: Date.now() / 1000,
             confidence: 0.95,
@@ -778,6 +785,25 @@ export default function CallInterface({ params }: { params: { id: string } }) {
               >
                 {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
               </button>
+              
+              {/* Speaker Toggle - Demo Mode Only */}
+              {demoMode && (
+                <button
+                  onClick={() => setCurrentSpeaker(prev => prev === 'salesperson' ? 'prospect' : 'salesperson')}
+                  className={`px-4 py-3 rounded-full flex items-center gap-2 font-medium transition-all ${
+                    currentSpeaker === 'salesperson' 
+                      ? 'bg-blue-600 hover:bg-blue-700' 
+                      : 'bg-purple-600 hover:bg-purple-700'
+                  }`}
+                  title="Toggle speaker (You / Prospect)"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  <span className="text-sm">
+                    {currentSpeaker === 'salesperson' ? 'You' : 'Prospect'}
+                  </span>
+                </button>
+              )}
+              
               <button
                 onClick={endCall}
                 className="px-8 py-4 bg-red-600 hover:bg-red-700 rounded-full flex items-center gap-2 font-semibold"
