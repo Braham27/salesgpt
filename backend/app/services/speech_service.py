@@ -55,7 +55,25 @@ class DeepgramTranscriptionService:
     
     def __init__(self):
         self.api_key = settings.deepgram_api_key
-        self.client = DeepgramClient(self.api_key) if DEEPGRAM_AVAILABLE else None
+        self.client = None
+        self.demo_mode = False
+        
+        # Only initialize Deepgram client if we have a valid API key
+        if DEEPGRAM_AVAILABLE and self.api_key and self.api_key != "your_deepgram_api_key_here":
+            try:
+                # Newer Deepgram SDK (v3+) uses api_key parameter
+                self.client = DeepgramClient(api_key=self.api_key)
+            except TypeError:
+                try:
+                    # Try legacy initialization for older SDK versions
+                    self.client = DeepgramClient(self.api_key)
+                except Exception as e:
+                    logger.warning(f"Failed to initialize Deepgram client: {e}. Using demo mode.")
+                    self.demo_mode = True
+        else:
+            logger.info("No valid Deepgram API key configured. Using demo mode for transcription.")
+            self.demo_mode = True
+            
         self.connection = None
         self.is_running = False
         self.segments: List[TranscriptSegment] = []
