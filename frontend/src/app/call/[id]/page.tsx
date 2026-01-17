@@ -75,6 +75,10 @@ export default function CallInterface({ params }: { params: { id: string } }) {
     objective: '',
   });
   
+  // Demo mode state
+  const [demoMode, setDemoMode] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  
   const wsRef = useRef<WebSocket | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -163,10 +167,119 @@ export default function CallInterface({ params }: { params: { id: string } }) {
     }
   };
   
-  // Start call
+  // Start demo mode with Web Speech API
+  const startDemoMode = async () => {
+    try {
+      // Check if Web Speech API is available
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
+        return;
+      }
+      
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      
+      // Set up speech recognition
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      
+      recognition.onresult = (event: any) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          const transcriptText = result[0].transcript;
+          const isFinal = result.isFinal;
+          
+          const segment: TranscriptSegment = {
+            text: transcriptText,
+            speaker: 'salesperson',
+            start_time: callDuration,
+            end_time: callDuration + 1,
+            confidence: result[0].confidence || 0.9,
+            is_final: isFinal,
+          };
+          
+          if (isFinal) {
+            setTranscript(prev => [...prev, segment]);
+            
+            // Get AI suggestion after each final transcript
+            if (transcriptText.length > 20) {
+              getAISuggestion(transcriptText);
+            }
+          }
+        }
+      };
+      
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          alert('Microphone access denied. Please allow microphone access and try again.');
+        }
+      };
+      
+      recognition.onend = () => {
+        // Restart if still in call
+        if (isCallActive && recognitionRef.current) {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.log('Recognition already started');
+          }
+        }
+      };
+      
+      recognitionRef.current = recognition;
+      recognition.start();
+      
+      setDemoMode(true);
+      setIsCallActive(true);
+      setConsentGranted(true); // Auto-grant consent in demo mode
+      
+      console.log('Demo mode started with Web Speech API');
+    } catch (error) {
+      console.error('Failed to start demo mode:', error);
+      alert('Failed to access microphone. Please check permissions.');
+    }
+  };
+  
+  // Get AI suggestion from Vercel API
+  const getAISuggestion = async (transcriptText: string) => {
+    try {
+      const response = await fetch('/api/ai-suggestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: transcriptText,
+          prospect_name: callContext.prospect_name,
+          company_name: callContext.prospect_company,
+          suggestion_type: 'general',
+          context: callContext.context
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const newSuggestion: Suggestion = {
+          type: result.type || 'general',
+          content: result.suggestion,
+          context: result.demo_mode ? 'Demo Mode' : 'AI Generated',
+          confidence: 0.9,
+          priority: 1
+        };
+        setSuggestions(prev => [newSuggestion, ...prev].slice(0, 5));
+      }
+    } catch (error) {
+      console.error('Failed to get AI suggestion:', error);
+    }
+  };
+  
+  // Start call - with demo mode fallback
   const startCall = async () => {
     try {
-      // Request microphone access
+      // Request microphone access first
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -176,18 +289,31 @@ export default function CallInterface({ params }: { params: { id: string } }) {
       });
       mediaStreamRef.current = stream;
       
-      // Connect WebSocket
+      // Try WebSocket connection with timeout
       connectWebSocket();
       
-      // Wait for connection
-      await new Promise<void>((resolve) => {
+      // Wait for connection with 5 second timeout
+      const connected = await new Promise<boolean>((resolve) => {
+        const timeout = setTimeout(() => {
+          resolve(false);
+        }, 5000);
+        
         const checkConnection = setInterval(() => {
           if (wsRef.current?.readyState === WebSocket.OPEN) {
             clearInterval(checkConnection);
-            resolve();
+            clearTimeout(timeout);
+            resolve(true);
           }
         }, 100);
       });
+      
+      if (!connected) {
+        console.log('WebSocket connection failed, switching to demo mode');
+        wsRef.current?.close();
+        // Start demo mode instead
+        await startDemoMode();
+        return;
+      }
       
       // Send start message with context
       wsRef.current?.send(
@@ -250,18 +376,28 @@ export default function CallInterface({ params }: { params: { id: string } }) {
   
   // End call
   const endCall = () => {
-    wsRef.current?.send(JSON.stringify({ type: 'end' }));
+    // Clean up WebSocket
+    if (wsRef.current) {
+      wsRef.current.send(JSON.stringify({ type: 'end' }));
+      wsRef.current.close();
+    }
     
-    // Clean up
+    // Clean up demo mode speech recognition
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    
+    // Clean up media stream
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
     }
     if (audioContextRef.current) {
       audioContextRef.current.close();
     }
-    wsRef.current?.close();
     
     setIsCallActive(false);
+    setDemoMode(false);
   };
   
   // Handle call ended
@@ -382,6 +518,11 @@ export default function CallInterface({ params }: { params: { id: string } }) {
               <span className="text-xl font-semibold">
                 {callContext.prospect_name || 'Sales Call'}
               </span>
+              {demoMode && (
+                <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full border border-yellow-500/30">
+                  DEMO MODE
+                </span>
+              )}
             </div>
             {callContext.prospect_company && (
               <span className="text-slate-400">
