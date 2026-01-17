@@ -186,29 +186,64 @@ export default function CallInterface({ params }: { params: { id: string } }) {
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
+      recognition.maxAlternatives = 1;
+      
+      // Track current interim transcript for display
+      let currentInterimId = 0;
       
       recognition.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
-          const transcriptText = result[0].transcript;
-          const isFinal = result.isFinal;
+          const text = result[0].transcript;
           
-          const segment: TranscriptSegment = {
-            text: transcriptText,
+          if (result.isFinal) {
+            finalTranscript += text;
+          } else {
+            interimTranscript += text;
+          }
+        }
+        
+        // Show interim results immediately (update or add)
+        if (interimTranscript) {
+          const interimSegment: TranscriptSegment = {
+            text: interimTranscript,
             speaker: 'salesperson',
-            start_time: callDuration,
-            end_time: callDuration + 1,
-            confidence: result[0].confidence || 0.9,
-            is_final: isFinal,
+            start_time: Date.now() / 1000,
+            end_time: Date.now() / 1000,
+            confidence: 0.5,
+            is_final: false,
           };
           
-          if (isFinal) {
-            setTranscript(prev => [...prev, segment]);
-            
-            // Get AI suggestion after each final transcript
-            if (transcriptText.length > 20) {
-              getAISuggestion(transcriptText);
-            }
+          setTranscript(prev => {
+            // Remove any previous interim (non-final) and add new one
+            const withoutInterim = prev.filter(s => s.is_final);
+            return [...withoutInterim, interimSegment];
+          });
+        }
+        
+        // Add final results
+        if (finalTranscript) {
+          const finalSegment: TranscriptSegment = {
+            text: finalTranscript,
+            speaker: 'salesperson',
+            start_time: Date.now() / 1000,
+            end_time: Date.now() / 1000,
+            confidence: 0.95,
+            is_final: true,
+          };
+          
+          setTranscript(prev => {
+            // Remove interim and add final
+            const withoutInterim = prev.filter(s => s.is_final);
+            return [...withoutInterim, finalSegment];
+          });
+          
+          // Get AI suggestion after each final transcript
+          if (finalTranscript.length > 20) {
+            getAISuggestion(finalTranscript);
           }
         }
       };
@@ -217,16 +252,20 @@ export default function CallInterface({ params }: { params: { id: string } }) {
         console.error('Speech recognition error:', event.error);
         if (event.error === 'not-allowed') {
           alert('Microphone access denied. Please allow microphone access and try again.');
+        } else if (event.error === 'no-speech') {
+          // No speech detected, this is normal - just restart
+          console.log('No speech detected, continuing...');
         }
       };
       
       recognition.onend = () => {
-        // Restart if still in call
-        if (isCallActive && recognitionRef.current) {
+        // Restart recognition - use ref to check if still active
+        if (recognitionRef.current) {
           try {
+            console.log('Speech recognition ended, restarting...');
             recognition.start();
           } catch (e) {
-            console.log('Recognition already started');
+            console.log('Recognition restart error:', e);
           }
         }
       };
