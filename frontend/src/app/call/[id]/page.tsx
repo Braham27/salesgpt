@@ -270,14 +270,55 @@ export default function CallInterface({ params }: { params: { id: string } }) {
     router.push(`/calls/${params.id}/summary`);
   };
   
-  // Request specific help
-  const requestHelp = (helpType: string, data?: any) => {
-    wsRef.current?.send(
-      JSON.stringify({
-        type: helpType,
-        data: data || {},
-      })
-    );
+  // Request specific help - with Vercel API fallback
+  const requestHelp = async (helpType: string, data?: any) => {
+    // Try WebSocket first if connected
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: helpType,
+          data: data || {},
+        })
+      );
+      return;
+    }
+    
+    // Fallback to Vercel API route for AI suggestions
+    try {
+      const suggestionType = helpType === 'request_discovery' ? 'discovery' 
+        : helpType === 'request_product' ? 'product'
+        : helpType === 'request_closing' ? 'closing' 
+        : 'general';
+      
+      const transcriptText = transcript.map(s => `${s.speaker}: ${s.text}`).join('\n') || 
+        'Starting a new sales call...';
+      
+      const response = await fetch('/api/ai-suggestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: transcriptText,
+          prospect_name: callContext.prospect_name,
+          company_name: callContext.prospect_company,
+          suggestion_type: suggestionType,
+          context: callContext.context
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const newSuggestion: Suggestion = {
+          type: suggestionType,
+          content: result.suggestion,
+          context: result.demo_mode ? 'Demo Mode' : 'AI Generated',
+          confidence: 0.9,
+          priority: 1
+        };
+        setSuggestions(prev => [newSuggestion, ...prev].slice(0, 5));
+      }
+    } catch (error) {
+      console.error('Failed to get AI suggestion:', error);
+    }
   };
   
   // Copy suggestion
