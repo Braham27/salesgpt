@@ -78,6 +78,7 @@ export default function CallInterface({ params }: { params: { id: string } }) {
   // Demo mode state
   const [demoMode, setDemoMode] = useState(false);
   const [currentSpeaker, setCurrentSpeaker] = useState<'salesperson' | 'prospect'>('salesperson');
+  const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const currentSpeakerRef = useRef<'salesperson' | 'prospect'>('salesperson');
   
@@ -255,13 +256,23 @@ export default function CallInterface({ params }: { params: { id: string } }) {
         }
       };
       
+      recognition.onstart = () => {
+        console.log('Speech recognition started - listening...');
+        setIsListening(true);
+      };
+      
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
+        setIsListening(false);
         if (event.error === 'not-allowed') {
           alert('Microphone access denied. Please allow microphone access and try again.');
         } else if (event.error === 'no-speech') {
-          // No speech detected, this is normal - just restart
-          console.log('No speech detected, continuing...');
+          // No speech detected, this is normal - will restart
+          console.log('No speech detected, waiting...');
+        } else if (event.error === 'aborted') {
+          console.log('Speech recognition aborted, will restart...');
+        } else if (event.error === 'network') {
+          alert('Network error with speech recognition. Please check your connection.');
         }
       };
       
@@ -444,6 +455,7 @@ export default function CallInterface({ params }: { params: { id: string } }) {
     
     setIsCallActive(false);
     setDemoMode(false);
+    setIsListening(false);
   };
   
   // Handle call ended
@@ -604,6 +616,20 @@ export default function CallInterface({ params }: { params: { id: string } }) {
               <div className="text-center text-slate-500 py-12">
                 <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>Start a call to see the live transcript</p>
+              </div>
+            )}
+            {transcript.length === 0 && isCallActive && demoMode && (
+              <div className="text-center py-12">
+                <div className="flex justify-center mb-4">
+                  <div className={`w-4 h-4 rounded-full ${isListening ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
+                </div>
+                <p className="text-slate-400 mb-2">
+                  {isListening ? '🎤 Listening... Speak into your microphone' : 'Starting speech recognition...'}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Make sure you\'re using Chrome or Edge browser<br/>
+                  and microphone permission is granted
+                </p>
               </div>
             )}
             {transcript.map((segment, index) => (
