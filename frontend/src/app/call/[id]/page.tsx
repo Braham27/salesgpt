@@ -591,7 +591,7 @@ export default function CallInterface({ params }: { params: { id: string } }) {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-73px)]">
+      <div className="flex h-[calc(100vh-73px-80px)] mb-20">
         {/* Left Panel - Transcript */}
         <div className="w-1/2 border-r border-slate-700 flex flex-col">
           <div className="p-4 border-b border-slate-700">

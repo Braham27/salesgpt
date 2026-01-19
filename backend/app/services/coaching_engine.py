@@ -503,11 +503,11 @@ Current call context will be provided. Generate helpful, actionable suggestions.
         prompt: str,
         suggestion_type: SuggestionType
     ) -> CoachingSuggestion:
-        """Generate a suggestion using GPT-4"""
+        """Generate a suggestion using GPT-5.2"""
         
         try:
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-5.2",
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},
                     {"role": "user", "content": prompt}
@@ -617,7 +617,7 @@ Current call context will be provided. Generate helpful, actionable suggestions.
         """
         
         response = await self.client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5.2",
             messages=[
                 {"role": "system", "content": "You are a professional sales email writer."},
                 {"role": "user", "content": prompt}
