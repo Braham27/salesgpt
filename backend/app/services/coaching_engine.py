@@ -507,13 +507,13 @@ Current call context will be provided. Generate helpful, actionable suggestions.
         
         try:
             response = await self.client.chat.completions.create(
-                model="gpt-5.2",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.7,
-                max_tokens=300
+                max_completion_tokens=300
             )
             
             content = response.choices[0].message.content.strip()
@@ -617,13 +617,13 @@ Current call context will be provided. Generate helpful, actionable suggestions.
         """
         
         response = await self.client.chat.completions.create(
-            model="gpt-5.2",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are a professional sales email writer."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=500
+            max_completion_tokens=500
         )
         
         return response.choices[0].message.content.strip()
