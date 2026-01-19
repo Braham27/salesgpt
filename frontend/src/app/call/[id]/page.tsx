@@ -124,9 +124,17 @@ export default function CallInterface({ params }: { params: { id: string } }) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
+  // Get WebSocket URL with fallback
+  const getWsUrl = () => {
+    // Use Railway backend URL
+    const backendUrl = process.env.NEXT_PUBLIC_WS_URL || 'wss://salesgpt-production.up.railway.app';
+    return `${backendUrl}/api/ws/call/${params.id}?token=demo`;
+  };
+  
   // Connect WebSocket
   const connectWebSocket = useCallback(() => {
-    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL}/api/ws/call/${params.id}?token=demo`;
+    const wsUrl = getWsUrl();
+    console.log('Connecting to WebSocket:', wsUrl);
     wsRef.current = new WebSocket(wsUrl);
     
     wsRef.current.onopen = () => {
@@ -302,90 +310,71 @@ export default function CallInterface({ params }: { params: { id: string } }) {
     }
   };
   
-  // Get AI suggestion from Vercel API
+  // Get AI suggestion from Railway backend
   const getAISuggestion = async (transcriptText: string) => {
     try {
-      const response = await fetch('/api/ai-suggestion', {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://salesgpt-production.up.railway.app';
+      const response = await fetch(`${backendUrl}/api/calls/test-suggestion`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          transcript: transcriptText,
-          prospect_name: callContext.prospect_name,
-          company_name: callContext.prospect_company,
-          suggestion_type: 'general',
-          context: callContext.context
+          transcript_text: transcriptText,
+          prospect_name: callContext.prospect_name || 'Prospect',
+          prospect_company: callContext.prospect_company || 'Company',
+          context: callContext.context,
+          objective: callContext.objective || 'Have a productive sales conversation'
         })
       });
       
       if (response.ok) {
         const result = await response.json();
+        const suggestion = result.suggestion;
         const newSuggestion: Suggestion = {
-          type: result.type || 'general',
-          content: result.suggestion,
-          context: result.demo_mode ? 'Demo Mode' : 'AI Generated',
-          confidence: 0.9,
-          priority: 1
+          type: suggestion?.type || 'general',
+          content: suggestion?.content || result.suggestion,
+          context: 'AI Powered by GPT-4o',
+          confidence: suggestion?.confidence || 0.9,
+          priority: suggestion?.priority || 1
         };
         setSuggestions(prev => [newSuggestion, ...prev].slice(0, 5));
       }
     } catch (error) {
       console.error('Failed to get AI suggestion:', error);
+      // Fallback to Vercel API route
+      try {
+        const response = await fetch('/api/ai-suggestion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transcript: transcriptText,
+            prospect_name: callContext.prospect_name,
+            company_name: callContext.prospect_company,
+            suggestion_type: 'general'
+          })
+        });
+        if (response.ok) {
+          const result = await response.json();
+          setSuggestions(prev => [{
+            type: result.type || 'general',
+            content: result.suggestion,
+            context: 'Demo Mode',
+            confidence: 0.8,
+            priority: 1
+          }, ...prev].slice(0, 5));
+        }
+      } catch (e) {
+        console.error('Fallback also failed:', e);
+      }
     }
   };
   
-  // Start call - with demo mode fallback
+  // Start call - always use Web Speech API for real transcription
   const startCall = async () => {
     try {
-      // Request microphone access first
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 16000,
-        },
-      });
-      mediaStreamRef.current = stream;
-      
-      // Try WebSocket connection with timeout
-      connectWebSocket();
-      
-      // Wait for connection with 5 second timeout
-      const connected = await new Promise<boolean>((resolve) => {
-        const timeout = setTimeout(() => {
-          resolve(false);
-        }, 5000);
-        
-        const checkConnection = setInterval(() => {
-          if (wsRef.current?.readyState === WebSocket.OPEN) {
-            clearInterval(checkConnection);
-            clearTimeout(timeout);
-            resolve(true);
-          }
-        }, 100);
-      });
-      
-      if (!connected) {
-        console.log('WebSocket connection failed, switching to demo mode');
-        wsRef.current?.close();
-        // Start demo mode instead
-        await startDemoMode();
-        return;
-      }
-      
-      // Send start message with context
-      wsRef.current?.send(
-        JSON.stringify({
-          type: 'start',
-          data: callContext,
-        })
-      );
-      
-      // Show consent dialog
-      setShowConsentDialog(true);
-      setIsCallActive(true);
-      
-      // Set up audio processing
-      setupAudioProcessing(stream);
+      // Always use demo mode with Web Speech API for real voice transcription
+      // (Backend Deepgram streaming is not fully implemented)
+      console.log('Starting call with Web Speech API transcription');
+      await startDemoMode();
     } catch (error) {
       console.error('Failed to start call:', error);
       alert('Failed to access microphone. Please check permissions.');
